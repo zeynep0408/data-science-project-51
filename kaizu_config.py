@@ -1,0 +1,11 @@
+"""
+Kaizu Config — Bu projeyi Kaizu hesabınla bağlar.
+
+⚠️ SADECE BU DOSYAYI DÜZENLE. Diğer hiçbir şeye dokunma.
+"""
+
+# Kendi user_id'ni Kaizu profil sayfandan al, buraya yaz.
+USER_ID = 0  # ← BURAYI DEĞİŞTİR
+
+# Bu projenin Kaizu'daki ID'si — DEĞİŞTİRME!
+PROJECT_ID = 748

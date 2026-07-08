@@ -1,0 +1,6 @@
+pytest
+requests
+# Gerçek embed + LLM ile çalıştırmak için (puanlama için gerekli DEĞİL):
+# sentence-transformers
+# openai
+# python-dotenv
