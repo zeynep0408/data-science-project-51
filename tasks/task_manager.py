@@ -26,134 +26,111 @@ import math
 
 
 def load_belgeler():
-    """
-    Koda gömülü ~5 belge döndür. Her belge bir dict:
-      {"baslik": str, "metin": str}
-    Başlıklar ÖğrenHub konuları olsun:
-      "Kayıt", "Ödeme ve İade", "Sertifika", "Teknik Destek", "Canlı Dersler".
-    Metinler konu kelimeleriyle örtüşsün (ör. "Sertifika" metninde "sertifika",
-    "sınav" geçsin) — böylece getir doğru belgeyi bulabilir.
-
-    Returns:
-        list[dict]
-    """
-    pass
+    return [
+        {
+            "baslik": "Kayıt",
+            "metin": "ÖğrenHub platformuna kayıt olmak için ana sayfadaki üye ol butonunu kullanabilirsiniz. Kayıt işlemi sırasında e-posta adresiniz ve şifreniz gereklidir."
+        },
+        {
+            "baslik": "Ödeme ve İade",
+            "metin": "Kurs ödemelerinizi kredi kartı veya banka kartı ile güvenle yapabilirsiniz. Satın alım sonrasındaki ilk 14 gün içinde koşulsuz iade hakkınız bulunmaktadır."
+        },
+        {
+            "baslik": "Sertifika",
+            "metin": "Eğitimleri başarıyla tamamladığınızda resmi bir sertifika almaya hak kazanırsınız. Sertifika alabilmek için bitirme sınavından yeterli puanı almanız gerekir."
+        },
+        {
+            "baslik": "Teknik Destek",
+            "metin": "Platform üzerindeki video oynatma sorunları veya giriş hataları için teknik destek ekibimizle her zaman iletişime geçebilirsiniz."
+        },
+        {
+            "baslik": "Canlı Dersler",
+            "metin": "Canlı dersler belirlenen takvime göre eğitmenler eşliğinde gerçekleşir. Canlı ders kayıtları daha sonra izlemeniz için sistemde saklanır."
+        }
+    ]
+pass
 
 
 def parcala(metin, boyut=120, overlap=20):
-    """
-    Metni karakter bazlı, ÜST ÜSTE BİNEN (overlap) parçalara böl.
-    Her adımda `boyut` karakter al, sonra `boyut - overlap` kadar ilerle.
-
-    Args:
-        metin: str
-        boyut: int — parça uzunluğu (karakter)
-        overlap: int — komşu parçaların paylaştığı karakter
-    Returns:
-        list[str]
-    """
-    pass
+    return [metin[i:i + boyut] for i in range(0, len(metin), boyut - overlap)]
+pass
 
 
 def chunkla_belgeler(belgeler, boyut=120, overlap=20):
-    """
-    Her belgeyi `parcala` ile böl; her parçaya belgenin başlığını KAYNAK olarak ekle.
-    Döndürülen her eleman: {"metin": str, "kaynak": str}
-
-    Args:
-        belgeler: list[dict] — load_belgeler() çıktısı
-    Returns:
-        list[dict]
-    """
-    pass
+    return [
+        {"metin": parca, "kaynak": doc["baslik"]}
+        for doc in belgeler
+        for parca in parcala(doc["metin"], boyut, overlap)
+    ]
+pass
 
 
 def benzerlik(v1, v2):
-    """
-    İki vektör arasındaki COSINE benzerliğini hesapla:
-        dot(v1, v2) / (norm(v1) * norm(v2))
-    Sıfır vektörde 0.0 döndür (bölme hatası olmasın).
-
-    Returns:
-        float
-    """
-    pass
+    dot = sum(a * b for a, b in zip(v1, v2))
+    n1 = math.sqrt(sum(a * a for a in v1))
+    n2 = math.sqrt(sum(b * b for b in v2))
+    return dot / (n1 * n2) if n1 and n2 else 0.0
+pass
 
 
 def indeksle(chunks, embed):
-    """
-    Her chunk'ı embed et; chunk'a "vektor" alanı ekleyip döndür.
-    Her eleman: {"metin": ..., "kaynak": ..., "vektor": embed(metin)}
-
-    Args:
-        chunks: list[dict] — chunkla_belgeler çıktısı
-        embed: callable — str → list[float]
-    Returns:
-        list[dict]
-    """
-    pass
+    return [
+        {**chunk, "vektor": embed(chunk["metin"])}
+        for chunk in chunks
+    ]
+pass
 
 
 def getir(soru, index, embed, k=3):
-    """
-    Soruyu embed et, index'teki her chunk ile COSINE benzerliğini hesapla,
-    en yüksek benzerlikli ilk `k` chunk'ı döndür (vektörleriyle birlikte).
-
-    Args:
-        soru: str
-        index: list[dict] — indeksle çıktısı
-        embed: callable
-        k: int
-    Returns:
-        list[dict] — en benzer k chunk
-    """
-    pass
-
+    soru_vektor = embed(soru)
+    return [
+        item for _, item in sorted(
+            ((benzerlik(soru_vektor, item["vektor"]), item) for item in index),
+            key=lambda x: x[0],
+            reverse=True
+        )[:k]
+    ]
+pass
 
 def sor(soru, index, embed, llm, k=3):
-    """
-    Tam RAG cevabı (tek-turlu):
-      1. getir(soru, index, embed, k) → ilgili chunk'lar
-      2. bağlam = chunk metinlerini birleştir
-      3. cevap = llm("Bağlam:\n{baglam}\n\nSoru: {soru}\nCevap:")
-      4. kaynaklar = getirilen chunk'ların benzersiz "kaynak"ları (sıralı)
-    (cevap, kaynaklar) ikilisini döndür.
-
-    Returns:
-        tuple(str, list[str])
-    """
-    pass
+    ilgili_chunklar = getir(soru, index, embed, k=k)
+    baglam = "\n".join([chunk["metin"] for chunk in ilgili_chunklar])
+    prompt = f"Bağlam:\n{baglam}\n\nSoru: {soru}\nCevap:"
+    cevap = llm(prompt)
+    
+    kaynaklar = sorted(list(set(chunk["kaynak"] for chunk in ilgili_chunklar)))
+    return cevap, kaynaklar
+pass
 
 
 def sohbet(soru, gecmis, index, embed, llm, k=3):
-    """
-    ÇOK-TURLU sohbet (konuşma hafızalı RAG):
-      - `gecmis`: önceki satırların listesi, ör.
-            ["Kullanıcı: kayıt nasıl olur?", "Asistan: e-posta ile ..."]
-      - getir(soru, index, embed, k) → ilgili chunk'lar → bağlam
-      - Prompt'u kur:
-          * gecmis DOLUYSA en başa "Önceki konuşma:\n" + satırları ekle (\n ile birleşik),
-            sonra bir boş satır bırak.
-          * ardından "Bağlam:\n{baglam}\n\nSoru: {soru}\nCevap:" ekle.
-      - cevap = llm(prompt)
-      - yeni_gecmis = gecmis + [f"Kullanıcı: {soru}", f"Asistan: {cevap}"]
-    (cevap, yeni_gecmis) ikilisini döndür.
-
-    Returns:
-        tuple(str, list[str])
-    """
-    pass
+    ilgili_chunklar = getir(soru, index, embed, k=k)
+    baglam = "\n".join([chunk["metin"] for chunk in ilgili_chunklar])
+    
+    prompt_parcalari = []
+    if gecmis:
+        prompt_parcalari.append("Önceki konuşma:\n" + "\n".join(gecmis))
+        prompt_parcalari.append("")
+        
+    prompt_parcalari.append(f"Bağlam:\n{baglam}\n\nSoru: {soru}\nCevap:")
+    prompt = "\n".join(prompt_parcalari)
+    
+    cevap = llm(prompt)
+    yeni_gecmis = gecmis + [f"Kullanıcı: {soru}", f"Asistan: {cevap}"]
+    
+    return cevap, yeni_gecmis
+pass
 
 
 def sadik_mi(cevap, baglam, hakem):
-    """
-    SADAKAT (faithfulness) kontrolü:
-      Cevabın bağlamla desteklenip desteklenmediğini `hakem`'e sorup puanlat.
-      - hakem: callable, prompt (str) → "1".."5" (str)
-      - Bir prompt kur (bağlam + cevap/iddia + "1-5 puanla"), hakem'i çağır.
-      - Dönen puanı int'e çevir; puan >= 4 ise True, değilse False döndür.
-
-    Returns:
-        bool
-    """
-    pass
+    
+    prompt = f"Bağlam: {baglam}\nİddia: {cevap}\nİddia bağlamla"
+    puan_str = hakem(prompt)
+    
+    try:
+        puan = int(str(puan_str).strip())
+    except (ValueError, AttributeError):
+        puan = 0
+        
+    return puan >= 4
+pass
